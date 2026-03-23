@@ -1,18 +1,360 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>持股追蹤</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#09090b" media="(prefers-color-scheme:dark)">
+<meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme:light)">
+<title>持股追蹤</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#09090b;--c:#18181b;--c2:#1f1f23;--bd:#27272a;--t:#fafafa;--tm:#71717a;--ac:#6366f1;--fd:'Outfit','Noto Sans TC',sans-serif;--fb:'Outfit','Noto Sans TC',sans-serif}
+@media(prefers-color-scheme:light){:root{--bg:#f8fafc;--c:#fff;--c2:#f1f5f9;--bd:#e2e8f0;--t:#0f172a;--tm:#64748b}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{background:var(--bg);font-family:var(--fb);color:var(--t);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+input,select,button,textarea{font-family:inherit}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+.app{min-height:100vh;max-width:520px;margin:0 auto;padding-bottom:100px}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;color:#fff;padding:11px 22px;border-radius:14px;font-size:13px;font-weight:700;box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;align-items:center;gap:8px;animation:slideDown .3s ease;max-width:92vw}
+.modal-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);animation:fadeIn .15s}
+.modal-box{width:100%;max-width:500px;background:var(--bg);border-radius:24px 24px 0 0;padding:22px;padding-bottom:calc(env(safe-area-inset-bottom,16px)+22px);max-height:92vh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.22,1,.36,1)}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-ti{font-size:18px;font-weight:800;color:var(--t);font-family:var(--fd)}
+.modal-cl{background:var(--c2);border:none;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--tm);cursor:pointer;font-size:18px}
+.fl{margin-bottom:12px}.fl-lb{display:block;font-size:10px;font-weight:700;color:var(--tm);margin-bottom:4px;letter-spacing:.8px}
+.fl-in,.fl-sl{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:2px solid var(--bd);background:var(--c2);color:var(--t);font-size:14px;outline:none}
+.fl-in:focus,.fl-sl:focus{border-color:var(--ac)}.fl-in.mono{font-family:'SF Mono','Menlo',monospace;font-size:12px;word-break:break-all}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 10px}
+.btn{padding:11px 18px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--fd);transition:all .15s;border:none}
+.btn:disabled{opacity:.5;cursor:default}.btn.w{width:100%}
+.btn.p{background:var(--ac);color:#fff}.btn.o{background:transparent;color:var(--t);border:2px solid var(--bd)}.btn.d{background:rgba(239,68,68,.06);color:#ef4444;border:2px solid rgba(239,68,68,.18)}
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    // 將 portfolio-cloud.jsx 的完整內容貼在這裡
-    // 注意：移除 import 語句，改用 React.useState 等
-  </script>
+<div id="app" class="app"></div>
+<script>
+(function(){
+"use strict";
+
+// ── DOM helper ──
+function h(tag,a){
+  var el=document.createElement(tag),i,k,v,c;
+  if(a)for(k in a){v=a[k];if(k==='style'&&typeof v==='object')Object.assign(el.style,v);else if(k.startsWith('on'))el.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='cls')el.className=v;else if(k==='html')el.innerHTML=v;else el.setAttribute(k,v);}
+  for(i=2;i<arguments.length;i++){c=arguments[i];if(c==null||c===false)continue;if(Array.isArray(c))c.forEach(function(x){if(x)el.appendChild(typeof x==='string'||typeof x==='number'?document.createTextNode(x):x);});else el.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(c):c);}
+  return el;
+}
+
+// ── Storage ──
+function sGet(k){try{var v=localStorage.getItem('ptf7-'+k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function sSet(k,v){try{localStorage.setItem('ptf7-'+k,JSON.stringify(v));}catch(e){}}
+
+// ── Helpers ──
+var CUR={TWD:'NT$',USD:'$',HKD:'HK$',JPY:'¥',EUR:'€',GBP:'£',CNY:'¥',KRW:'₩'};
+function cs(c){return CUR[(c||'').toUpperCase()]||c||'$';}
+function fmt(n,d){d=d||0;if(n==null||isNaN(n))return'—';return Number(n).toLocaleString('zh-TW',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fP(n){if(n==null||isNaN(n))return'—';return(n>=0?'+':'')+n.toFixed(2)+'%';}
+
+function calc(s){
+  var isShort=/空|short/i.test(s.direction),dir=isShort?-1:1;
+  var closed=/已平倉|closed/i.test(s.status);
+  var ref=closed&&s.exitPrice?s.exitPrice:s.currentPrice;
+  var cost=s.entryPrice*s.shares;
+  var pnl=dir*((ref||0)-s.entryPrice)*s.shares;
+  var pnlPct=cost>0?(pnl/cost)*100:0;
+  return{openDate:s.openDate,symbol:s.symbol,name:s.name,currency:s.currency,direction:s.direction,status:s.status,shares:s.shares,entryPrice:s.entryPrice,exitPrice:s.exitPrice,currentPrice:s.currentPrice,note:s.note,id:s.id,dir:dir,closed:closed,ref:ref,cost:cost,pnl:pnl,pnlPct:pnlPct};
+}
+
+function pC(v){return v>0?'#ef4444':v<0?'#10b981':'var(--tm)';}
+function pBg(v){return v>0?'rgba(239,68,68,.06)':v<0?'rgba(16,185,129,.06)':'transparent';}
+
+var ALIAS={'開倉日期':'openDate','日期':'openDate','代號 (Symbol)':'symbol','代號':'symbol','Symbol':'symbol','名稱':'name','公司名稱':'name','幣別':'currency','方向':'direction','狀態':'status','股數':'shares','持有股數':'shares','進場價':'entryPrice','買進均價':'entryPrice','出場價':'exitPrice','目前股價':'currentPrice','股價':'currentPrice','損益金額':'_pnl','報酬率 (%)':'_roi','報酬率':'_roi','備註':'note'};
+
+function mapRow(row){
+  var m={};Object.keys(row).forEach(function(k){var f=ALIAS[k.trim()];if(f&&f[0]!=='_')m[f]=row[k];});
+  return{openDate:String(m.openDate||'').trim(),symbol:String(m.symbol||'').trim(),name:String(m.name||'').trim(),currency:String(m.currency||'USD').trim().toUpperCase(),direction:String(m.direction||'多').trim(),status:String(m.status||'持倉中').trim(),shares:parseFloat(m.shares)||0,entryPrice:parseFloat(m.entryPrice)||0,exitPrice:parseFloat(m.exitPrice)||0,currentPrice:parseFloat(m.currentPrice)||0,note:String(m.note||'').trim()};
+}
+
+function toSheet(s){var d=calc(s);return{'開倉日期':s.openDate,'代號 (Symbol)':s.symbol,'名稱':s.name,'幣別':s.currency,'方向':s.direction,'狀態':s.status,'股數':s.shares,'進場價':s.entryPrice,'出場價':s.exitPrice||'','目前股價':s.currentPrice,'損益金額':Math.round(d.pnl*100)/100,'報酬率 (%)':Math.round(d.pnlPct*100)/100,'備註':s.note||''};}
+
+// ── State ──
+var stocks=sGet('data')||[];
+var config=sGet('config')||{apiUrl:''};
+var tab='all',sortBy='pnlPct',sortDesc=true,search='',syncing=false,lastSync=null,openCards={};
+
+function saveStocks(ns){stocks=ns;sSet('data',ns);render();}
+function saveConfig(nc){config=nc;sSet('config',nc);}
+
+// ── Toast ──
+var toastT;
+function toast(msg,type){
+  type=type||'info';clearTimeout(toastT);
+  var old=document.querySelector('.toast');if(old)old.remove();
+  var bg={success:'#10b981',error:'#ef4444',info:'#6366f1'};
+  var ic={success:'✓',error:'✕',info:'ℹ'};
+  var t=h('div',{cls:'toast',style:{background:bg[type]||bg.info}},ic[type]+' '+msg);
+  document.body.appendChild(t);toastT=setTimeout(function(){t.remove();},4000);
+}
+
+// ── Cloud ──
+function cloudGet(url){return fetch(url,{redirect:'follow'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
+function cloudPost(url,body){return fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
+
+function pullCloud(){
+  if(!config.apiUrl){toast('請先設定 Apps Script 網址','error');showSettings();return;}
+  syncing=true;render();
+  cloudGet(config.apiUrl).then(function(r){
+    if(!r.success)throw new Error(r.error||'讀取失敗');
+    var mapped=(r.data||[]).map(function(row,i){var m=mapRow(row);m.id=Date.now()+i;return m;}).filter(function(s){return s.symbol;});
+    saveStocks(mapped);lastSync=new Date();
+    toast('☁️ 同步成功！'+mapped.length+' 筆部位','success');
+  }).catch(function(e){toast('同步失敗: '+e.message,'error');}).finally(function(){syncing=false;render();});
+}
+
+function pushCloud(){
+  if(!config.apiUrl){toast('請先設定','error');return;}
+  if(!stocks.length){toast('沒有資料','error');return;}
+  syncing=true;render();
+  var rows=stocks.map(toSheet);
+  cloudPost(config.apiUrl,{action:'overwrite',rows:rows}).then(function(r){
+    if(!r.success)throw new Error(r.error||'寫入失敗');
+    toast('☁️ 已寫回 '+rows.length+' 筆','success');
+  }).catch(function(e){toast('寫回失敗: '+e.message,'error');}).finally(function(){syncing=false;render();});
+}
+
+// ── Modals ──
+var curModal=null;
+function closeModal(){if(curModal){curModal.remove();curModal=null;}}
+
+function showModal(title,contentEl){
+  closeModal();
+  var ov=h('div',{cls:'modal-overlay'},
+    h('div',{cls:'modal-box',onClick:function(e){e.stopPropagation();}},
+      h('div',{cls:'modal-hd'},h('span',{cls:'modal-ti'},title),h('button',{cls:'modal-cl',onClick:closeModal},'✕')),
+      contentEl
+    )
+  );
+  ov.addEventListener('click',function(e){if(e.target===ov)closeModal();});
+  document.body.appendChild(ov);curModal=ov;
+}
+
+function mkField(label,val,onChange,opts){
+  opts=opts||{};
+  var wrap=h('div',{cls:'fl'});
+  wrap.appendChild(h('label',{cls:'fl-lb'},label+(opts.required?' *':'')));
+  if(opts.options){
+    var sel=h('select',{cls:'fl-sl'});
+    opts.options.forEach(function(o){var ov=typeof o==='object'?o.value:o,ol=typeof o==='object'?o.label:o;var opt=h('option',{value:ov},ol);if(ov===val)opt.selected=true;sel.appendChild(opt);});
+    sel.addEventListener('change',function(e){onChange(e.target.value);});
+    wrap.appendChild(sel);
+  }else{
+    var inp=h('input',{cls:'fl-in'+(opts.mono?' mono':''),type:opts.type||'text',value:val||'',placeholder:opts.placeholder||''});
+    inp.addEventListener('input',function(e){onChange(e.target.value);});
+    wrap.appendChild(inp);
+  }
+  return wrap;
+}
+
+function showStockForm(stock){
+  var f=stock?Object.assign({},stock):{openDate:new Date().toISOString().slice(0,10),symbol:'',name:'',currency:'USD',direction:'多',status:'持倉中',shares:'',entryPrice:'',exitPrice:'',currentPrice:'',note:''};
+  function set(k,v){f[k]=v;}
+  showModal(stock?'編輯部位':'新增部位',
+    h('div',null,
+      h('div',{cls:'g2'},mkField('開倉日期',f.openDate,function(v){set('openDate',v);},{type:'date'}),mkField('代號 (Symbol)',f.symbol,function(v){set('symbol',v);},{placeholder:'AAPL',required:true})),
+      mkField('名稱',f.name,function(v){set('name',v);},{placeholder:'Apple Inc.'}),
+      h('div',{cls:'g3'},mkField('幣別',f.currency,function(v){set('currency',v);},{options:['USD','TWD','HKD','JPY','EUR','GBP','CNY']}),mkField('方向',f.direction,function(v){set('direction',v);},{options:[{value:'多',label:'做多'},{value:'空',label:'做空'}]}),mkField('狀態',f.status,function(v){set('status',v);},{options:[{value:'持倉中',label:'持倉中'},{value:'已平倉',label:'已平倉'}]})),
+      h('div',{cls:'g2'},mkField('股數',f.shares,function(v){set('shares',v);},{type:'number',placeholder:'0',required:true}),mkField('進場價',f.entryPrice,function(v){set('entryPrice',v);},{type:'number',placeholder:'0',required:true})),
+      h('div',{cls:'g2'},mkField('出場價',f.exitPrice,function(v){set('exitPrice',v);},{type:'number',placeholder:'平倉才需填'}),mkField('目前股價',f.currentPrice,function(v){set('currentPrice',v);},{type:'number',placeholder:'0'})),
+      mkField('備註',f.note,function(v){set('note',v);},{placeholder:'策略、理由...'}),
+      h('button',{cls:'btn p w',style:{marginTop:'4px'},onClick:function(){
+        if(!f.symbol||!f.shares||!f.entryPrice)return;
+        var s=Object.assign({},f,{shares:+f.shares||0,entryPrice:+f.entryPrice||0,exitPrice:+f.exitPrice||0,currentPrice:+f.currentPrice||0,id:f.id||Date.now()});
+        if(stock)saveStocks(stocks.map(function(st){return st.id===s.id?s:st;}));
+        else saveStocks(stocks.concat([s]));
+        closeModal();
+      }},stock?'儲存變更':'新增部位')
+    )
+  );
+}
+
+function showSettings(){
+  var c=Object.assign({},config);
+  var testBox=h('div');
+  showModal('☁️ 雲端連線設定',
+    h('div',null,
+      h('div',{style:{background:'var(--c2)',borderRadius:'14px',padding:'14px 16px',marginBottom:'18px',border:'1px solid var(--bd)',fontSize:'12px',color:'var(--tm)',lineHeight:'1.9'}},
+        h('div',{style:{fontWeight:'800',color:'var(--t)',marginBottom:'6px',fontSize:'13px'}},'設定步驟'),
+        ['1|Google Sheet → 擴充功能 → Apps Script','2|貼上提供的 Apps Script 程式碼','3|修改 SHEET_ID 為你的試算表 ID','4|部署 → 新增部署 → 網頁應用程式','5|存取權限選「所有人」→ 部署','6|複製產生的網址貼到下方'].map(function(s){var p=s.split('|');return h('div',{style:{display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'4px'}},h('span',{style:{background:'var(--ac)',color:'#fff',borderRadius:'6px',padding:'1px 7px',fontSize:'11px',fontWeight:'800',flexShrink:'0'}},p[0]),h('span',null,p[1]));})
+      ),
+      mkField('Apps Script Web App 網址',c.apiUrl||'',function(v){c.apiUrl=v;},{placeholder:'https://script.google.com/macros/s/...',mono:true}),
+      testBox,
+      h('div',{style:{display:'flex',gap:'8px',marginTop:'4px'}},
+        h('button',{cls:'btn o w',style:{fontSize:'13px'},onClick:function(){
+          if(!c.apiUrl)return;
+          testBox.innerHTML='';testBox.appendChild(h('div',{style:{padding:'10px 14px',borderRadius:'10px',marginBottom:'12px',background:'var(--c2)',border:'1px solid var(--bd)',fontSize:'13px',fontWeight:'700',color:'var(--tm)'}},'測試中...'));
+          cloudGet(c.apiUrl).then(function(r){
+            testBox.innerHTML='';
+            if(r.success)testBox.appendChild(h('div',{style:{padding:'10px 14px',borderRadius:'10px',marginBottom:'12px',background:'rgba(16,185,129,.08)',border:'1px solid rgba(16,185,129,.2)',fontSize:'13px',fontWeight:'700',color:'#10b981'}},'✓ 連線成功！找到 '+(r.count||0)+' 筆資料'));
+            else testBox.appendChild(h('div',{style:{padding:'10px 14px',borderRadius:'10px',marginBottom:'12px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',fontSize:'13px',fontWeight:'700',color:'#ef4444'}},'✕ '+(r.error||'未知錯誤')));
+          }).catch(function(e){testBox.innerHTML='';testBox.appendChild(h('div',{style:{padding:'10px 14px',borderRadius:'10px',marginBottom:'12px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',fontSize:'13px',fontWeight:'700',color:'#ef4444'}},'✕ '+e.message));});
+        }},'🔗 測試連線'),
+        h('button',{cls:'btn p w',style:{fontSize:'13px'},onClick:function(){
+          saveConfig(c);closeModal();toast('設定已儲存','success');render();
+        }},'儲存')
+      )
+    )
+  );
+}
+
+// ── Render ──
+function render(){
+  var app=document.getElementById('app');
+  app.innerHTML='';
+  var hasUrl=!!config.apiUrl;
+  var enriched=stocks.map(calc);
+
+  // Header
+  app.appendChild(h('div',{style:{padding:'22px 18px 0',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+    h('div',null,
+      h('div',{style:{fontSize:'26px',fontWeight:'900',fontFamily:'var(--fd)',letterSpacing:'-.8px'}},'持股追蹤'),
+      h('div',{style:{fontSize:'11px',color:'var(--tm)',marginTop:'3px',display:'flex',alignItems:'center',gap:'6px'}},
+        new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'}),
+        lastSync?h('span',{style:{background:'rgba(16,185,129,.1)',color:'#10b981',padding:'1px 7px',borderRadius:'5px',fontSize:'9px',fontWeight:'700'}},'☁️ 已同步'):null
+      )
+    ),
+    h('div',{style:{display:'flex',gap:'8px'}},
+      h('button',{style:{width:'40px',height:'40px',borderRadius:'12px',border:'1.5px solid var(--bd)',background:hasUrl?'rgba(99,102,241,.1)':'var(--c)',color:hasUrl?'var(--ac)':'var(--tm)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'18px'},onClick:showSettings},'☁️'),
+      h('button',{style:{width:'40px',height:'40px',borderRadius:'12px',border:'none',background:'var(--ac)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'20px'},onClick:function(){showStockForm(null);}},'+')
+    )
+  ));
+
+  // Sync
+  if(hasUrl){
+    app.appendChild(h('div',{style:{padding:'14px 18px 0',display:'flex',gap:'8px'}},
+      h('button',{cls:'btn o w',style:{fontSize:'13px',padding:'10px 0'},disabled:syncing,onClick:pullCloud},syncing?'↻ 同步中...':'⬇ 從 Sheet 拉取'),
+      h('button',{cls:'btn o w',style:{fontSize:'13px',padding:'10px 0'},disabled:syncing,onClick:pushCloud},syncing?'↻ 同步中...':'⬆ 寫回 Sheet')
+    ));
+  }
+
+  // Summary
+  if(stocks.length>0){
+    var all=enriched,opn=all.filter(function(s){return!s.closed;}),clo=all.filter(function(s){return s.closed;});
+    var opnPnl=opn.reduce(function(a,s){return a+s.pnl;},0),cloPnl=clo.reduce(function(a,s){return a+s.pnl;},0);
+    var tPnl=opnPnl+cloPnl,tCost=all.reduce(function(a,s){return a+s.cost;},0);
+    var tPct=tCost>0?(tPnl/tCost)*100:0;
+    var wr=all.length>0?((all.filter(function(s){return s.pnl>0;}).length/all.length)*100):0;
+    app.appendChild(h('div',{style:{background:'linear-gradient(150deg,#6366f1,#4338ca 60%,#3730a3)',borderRadius:'24px',padding:'24px 22px 20px',color:'#fff',margin:'14px 18px 16px',position:'relative',overflow:'hidden'}},
+      h('div',{style:{position:'absolute',top:'-50px',right:'-50px',width:'160px',height:'160px',borderRadius:'50%',background:'rgba(255,255,255,.05)'}}),
+      h('div',{style:{fontSize:'11px',opacity:'.65',fontWeight:'700',letterSpacing:'2px'}},'TOTAL P&L'),
+      h('div',{style:{fontSize:'34px',fontWeight:'900',marginTop:'6px',fontFamily:'var(--fd)',letterSpacing:'-1.5px'}},(tPnl>=0?'+':'−')+fmt(Math.abs(tPnl))),
+      h('div',{style:{display:'inline-flex',alignItems:'center',marginTop:'8px',background:tPnl>=0?'rgba(255,255,255,.16)':'rgba(0,0,0,.2)',borderRadius:'10px',padding:'5px 14px',fontSize:'14px',fontWeight:'800'}},fP(tPct)),
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:'8px',marginTop:'20px',paddingTop:'16px',borderTop:'1px solid rgba(255,255,255,.1)'}},
+        [['持倉損益',opnPnl,true],['已實現',cloPnl,true],['勝率',wr,false],['部位',null,false]].map(function(it,i){
+          return h('div',null,h('div',{style:{fontSize:'9px',opacity:'.5',letterSpacing:'.5px'}},it[0]),h('div',{style:{fontSize:'13px',fontWeight:'800',marginTop:'3px',color:it[2]?(it[1]>=0?'#fca5a5':'#6ee7b7'):'#fff'}},it[2]?((it[1]>=0?'+':'−')+fmt(Math.abs(it[1]))):i===2?it[1].toFixed(0)+'%':opn.length+'/'+all.length));
+        })
+      )
+    ));
+  }
+
+  // Tabs
+  if(stocks.length>0){
+    var TABS=[{k:'all',l:'全部'},{k:'open',l:'持倉中'},{k:'closed',l:'已平倉'},{k:'long',l:'做多'},{k:'short',l:'做空'}];
+    var cnts={all:enriched.length,open:enriched.filter(function(s){return!s.closed;}).length,closed:enriched.filter(function(s){return s.closed;}).length,long:enriched.filter(function(s){return s.dir===1;}).length,short:enriched.filter(function(s){return s.dir===-1;}).length};
+    app.appendChild(h('div',{style:{padding:'0 18px',display:'flex',gap:'5px',marginBottom:'10px',overflowX:'auto',scrollbarWidth:'none'}},
+      TABS.map(function(t){return h('button',{style:{padding:'7px 14px',borderRadius:'10px',border:tab===t.k?'none':'1.5px solid var(--bd)',background:tab===t.k?'var(--ac)':'var(--c)',color:tab===t.k?'#fff':'var(--tm)',fontSize:'12px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'},onClick:function(){tab=t.k;render();}},t.l+' '+cnts[t.k]);})
+    ));
+
+    // Search+Sort
+    var si=h('input',{type:'text',value:search,placeholder:'搜尋⋯',style:{flex:'1',padding:'9px 14px',borderRadius:'10px',border:'2px solid var(--bd)',background:'var(--c)',color:'var(--t)',fontSize:'13px',outline:'none',fontFamily:'var(--fb)',minWidth:'0'}});
+    si.addEventListener('input',function(e){search=e.target.value;render();});
+    var SORTS=[{k:'pnlPct',l:'報酬%'},{k:'pnl',l:'損益'},{k:'cost',l:'成本'},{k:'openDate',l:'日期'}];
+    app.appendChild(h('div',{style:{padding:'0 18px',display:'flex',gap:'8px',alignItems:'center',marginBottom:'12px'}},
+      si,
+      h('div',{style:{display:'flex',gap:'3px',flexShrink:'0'}},
+        SORTS.map(function(o){return h('button',{style:{padding:'6px 9px',borderRadius:'8px',border:'1.5px solid '+(sortBy===o.k?'var(--ac)':'var(--bd)'),background:sortBy===o.k?'var(--ac)':'var(--c)',color:sortBy===o.k?'#fff':'var(--tm)',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'},onClick:function(){if(sortBy===o.k)sortDesc=!sortDesc;else{sortBy=o.k;sortDesc=true;}render();}},o.l+(sortBy===o.k?(sortDesc?'↓':'↑'):''));})
+      )
+    ));
+  }
+
+  // Filter+Sort
+  var list=enriched.slice();
+  if(tab==='open')list=list.filter(function(s){return!s.closed;});
+  if(tab==='closed')list=list.filter(function(s){return s.closed;});
+  if(tab==='long')list=list.filter(function(s){return s.dir===1;});
+  if(tab==='short')list=list.filter(function(s){return s.dir===-1;});
+  if(search){var q=search.toLowerCase();list=list.filter(function(s){return s.symbol.toLowerCase().indexOf(q)>=0||s.name.toLowerCase().indexOf(q)>=0||(s.note||'').toLowerCase().indexOf(q)>=0;});}
+  list.sort(function(a,b){if(sortBy==='openDate')return sortDesc?(b.openDate||'').localeCompare(a.openDate||''):(a.openDate||'').localeCompare(b.openDate||'');return sortDesc?(b[sortBy]||0)-(a[sortBy]||0):(a[sortBy]||0)-(b[sortBy]||0);});
+
+  // Content
+  var ct=h('div',{style:{padding:'0 18px'}});
+
+  if(stocks.length===0){
+    ct.appendChild(h('div',{style:{textAlign:'center',padding:'40px 22px',background:'var(--c)',borderRadius:'20px',border:'2px dashed var(--bd)'}},
+      h('div',{style:{fontSize:'48px',marginBottom:'12px'}},'☁️'),
+      h('div',{style:{fontSize:'17px',fontWeight:'900',color:'var(--t)',fontFamily:'var(--fd)'}},'連結雲端 Google Sheet'),
+      h('div',{style:{fontSize:'13px',color:'var(--tm)',marginTop:'8px',lineHeight:'1.8',marginBottom:'20px'}},'透過 Google Apps Script 建立免費 API，即時同步你的持股資料到雲端。'),
+      h('div',{style:{display:'flex',gap:'10px',justifyContent:'center',flexWrap:'wrap'}},
+        h('button',{cls:'btn p',onClick:showSettings},'☁️ 開始設定'),
+        h('button',{cls:'btn o',onClick:function(){showStockForm(null);}},'+ 手動新增')
+      )
+    ));
+  } else if(list.length===0){
+    ct.appendChild(h('div',{style:{textAlign:'center',padding:'32px 0',color:'var(--tm)'}},h('div',{style:{fontSize:'15px',fontWeight:'600'}},search?'找不到符合的部位':'尚無部位資料')));
+  } else {
+    list.forEach(function(stock){
+      var d=calc(stock),isO=openCards[stock.id],dirCol=d.dir===1?'#ef4444':'#10b981';
+      var card=h('div',{style:{background:'var(--c)',borderRadius:'16px',marginBottom:'8px',border:'1px solid var(--bd)',overflow:'hidden'}});
+
+      // Header
+      card.appendChild(h('div',{style:{padding:'14px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:'12px'},onClick:function(){openCards[stock.id]=!openCards[stock.id];render();}},
+        h('div',{style:{width:'46px',height:'46px',borderRadius:'13px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:pBg(d.pnl),flexShrink:'0',borderLeft:'3px solid '+dirCol}},
+          h('span',{style:{fontSize:'11px',fontWeight:'900',color:pC(d.pnl),fontFamily:'var(--fd)'}},stock.symbol),
+          h('span',{style:{fontSize:'7px',fontWeight:'800',color:dirCol,letterSpacing:'1px',marginTop:'1px'}},d.dir===1?'LONG':'SHORT')
+        ),
+        h('div',{style:{flex:'1',minWidth:'0'}},
+          h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap'}},
+            h('span',{style:{fontSize:'15px',fontWeight:'800',color:'var(--t)',fontFamily:'var(--fd)'}},stock.name||stock.symbol),
+            h('span',{style:{fontSize:'8px',fontWeight:'700',padding:'2px 6px',borderRadius:'5px',marginLeft:'5px',color:d.closed?'var(--tm)':'#6366f1',background:d.closed?'var(--c2)':'rgba(99,102,241,.08)',border:'1px solid '+(d.closed?'var(--bd)':'rgba(99,102,241,.2)')}},d.closed?'已平倉':'持倉中')
+          ),
+          h('div',{style:{fontSize:'11px',color:'var(--tm)',marginTop:'3px'}},(stock.openDate?stock.openDate+' · ':'')+fmt(stock.shares)+' 股 · '+cs(stock.currency)+fmt(stock.entryPrice,2))
+        ),
+        h('div',{style:{textAlign:'right',flexShrink:'0'}},
+          h('div',{style:{fontSize:'16px',fontWeight:'800',color:'var(--t)',fontFamily:'var(--fd)'}},cs(stock.currency)+fmt(d.ref,2)),
+          h('div',{style:{fontSize:'12px',fontWeight:'800',color:pC(d.pnl)}},fP(d.pnlPct))
+        ),
+        h('svg',{width:'16',height:'16',viewBox:'0 0 16 16',fill:'none',stroke:'currentColor','stroke-width':'2',style:{flexShrink:'0',transform:isO?'rotate(180deg)':'',transition:'.25s'},html:'<path d="M4 6l4 4 4-4"/>'})
+      ));
+
+      if(isO){
+        var dets=[['進場價',cs(stock.currency)+fmt(stock.entryPrice,2),'var(--t)'],['出場價',stock.exitPrice?cs(stock.currency)+fmt(stock.exitPrice,2):'—','var(--t)'],['現價',cs(stock.currency)+fmt(stock.currentPrice,2),'var(--t)'],['損益',(d.pnl>=0?'+':'−')+cs(stock.currency)+fmt(Math.abs(d.pnl)),pC(d.pnl)],['報酬率',fP(d.pnlPct),pC(d.pnl)],['總成本',cs(stock.currency)+fmt(d.cost),'var(--t)']];
+        card.appendChild(h('div',{style:{padding:'0 16px 14px',animation:'fadeIn .15s'}},
+          h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px 14px',padding:'12px 14px',background:'var(--bg)',borderRadius:'12px'}},
+            dets.map(function(dt){return h('div',null,h('span',{style:{fontSize:'10px',color:'var(--tm)'}},dt[0]),h('div',{style:{fontSize:'13px',fontWeight:'800',color:dt[2],marginTop:'2px'}},dt[1]));})
+          ),
+          stock.note?h('div',{style:{marginTop:'10px',padding:'10px 14px',background:'var(--c2)',borderRadius:'10px',fontSize:'12px',color:'var(--tm)',lineHeight:'1.7'}},'📝 '+stock.note):null,
+          h('div',{style:{display:'flex',gap:'8px',marginTop:'10px'}},
+            h('button',{cls:'btn o w',style:{padding:'8px 0',fontSize:'13px'},onClick:function(e){e.stopPropagation();showStockForm(stock);}},'✏️ 編輯'),
+            h('button',{cls:'btn d w',style:{padding:'8px 0',fontSize:'13px'},onClick:function(e){e.stopPropagation();saveStocks(stocks.filter(function(s){return s.id!==stock.id;}));toast('已刪除','info');}},'🗑 刪除')
+          )
+        ));
+      }
+      ct.appendChild(card);
+    });
+  }
+  app.appendChild(ct);
+}
+
+render();
+})();
+</script>
 </body>
 </html>
