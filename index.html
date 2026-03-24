@@ -86,14 +86,16 @@ function updatePrices(){
   syncing=true;render();
   cloudPost(config.apiUrl,{action:'updatePrices'}).then(function(r){
     if(!r.success) throw new Error(r.error);
-    // 更新本地資料
-    if(r.prices&&r.prices.length>0){
-      var pm={};r.prices.forEach(function(p){if(p.success)pm[p.symbol]=p.price;});
-      stocks.forEach(function(s){if(pm[s.symbol])s.currentPrice=pm[s.symbol];});
-      saveStocks(stocks);
+    toast('📡 已更新 '+(r.updated||0)+' 檔即時股價，正在同步...','success');
+    // 更新完股價後，重新從 Sheet 拉取最新資料
+    return cloudGet(config.apiUrl);
+  }).then(function(r){
+    if(r&&r.success){
+      var mapped=(r.data||[]).map(function(row,i){var m=mapRow(row);m.id=Date.now()+i;return m;}).filter(function(s){return s.symbol;});
+      stocks=mapped;sSet('data',stocks);
+      lastSync=new Date();
+      toast('✅ 股價已更新並同步完成','success');
     }
-    toast('📡 已更新 '+(r.updated||0)+' 檔即時股價','success');
-    // 拉取歷史
     fetchHistory();
   }).catch(function(e){toast('股價更新失敗: '+e.message,'error');}).finally(function(){syncing=false;render();});
 }
